@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 
 from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
-                        Numeric, String, Text)
+                        Numeric, String, Text, UniqueConstraint)
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -72,6 +72,17 @@ class Product(Base):
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan", order_by="ProductImage.sort_order")
     cart_items = relationship("CartItem", back_populates="product")
     order_items = relationship("OrderItem", back_populates="product")
+    reviews = relationship("Review", back_populates="product", cascade="all, delete-orphan")
+
+    @property
+    def review_count(self):
+        return len(self.reviews)
+
+    @property
+    def avg_rating(self):
+        if not self.reviews:
+            return 0
+        return round(sum(r.rating for r in self.reviews) / len(self.reviews), 1)
 
 
 class ProductImage(Base):
@@ -189,3 +200,22 @@ class Banner(Base):
     link_url = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Review(Base):
+    __tablename__ = "reviews"
+    __table_args__ = (UniqueConstraint("user_id", "product_id", name="uq_review_user_product"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User")
+    product = relationship("Product", back_populates="reviews")
+
+    @property
+    def user_name(self):
+        return self.user.full_name

@@ -92,6 +92,8 @@ class ProductOut(BaseModel):
     category_id: Optional[int]
     category: Optional[CategoryOut]
     images: list[ProductImageOut] = []
+    avg_rating: float = 0
+    review_count: int = 0
     created_at: datetime
 
     class Config:
@@ -228,6 +230,24 @@ class NotificationOut(BaseModel):
     type: str
     is_read: bool
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Review Schemas ────────────────────────────────────────────────────────────
+
+class ReviewCreate(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=500)
+
+
+class ReviewOut(BaseModel):
+    id: int
+    rating: int
+    comment: Optional[str]
+    created_at: datetime
+    user_name: str
 
     class Config:
         from_attributes = True

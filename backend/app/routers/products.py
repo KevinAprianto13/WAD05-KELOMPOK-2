@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.deps import get_current_admin
 from app.db.session import get_db
@@ -62,7 +62,11 @@ def list_products(
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    q = db.query(Product).options(joinedload(Product.category)).filter(Product.is_active == True)
+    q = (
+        db.query(Product)
+        .options(joinedload(Product.category), selectinload(Product.reviews))
+        .filter(Product.is_active == True)
+    )
     if search:
         q = q.filter(Product.name.ilike(f"%{search}%"))
     if category_id:

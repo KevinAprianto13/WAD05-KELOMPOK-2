@@ -11,6 +11,7 @@ from app.routers.cart import router as cart_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.orders import router as orders_router
 from app.routers.products import categories_router, products_router
+from app.routers.reviews import router as reviews_router
 from app.routers.chat import router as chat_router
 from app.routers.notifications import router as notifications_router
 from app.routers.banners import router as banners_router
@@ -47,6 +48,7 @@ prefix = settings.API_V1_STR
 app.include_router(auth_router, prefix=prefix)
 app.include_router(products_router, prefix=prefix)
 app.include_router(categories_router, prefix=prefix)
+app.include_router(reviews_router, prefix=prefix)
 app.include_router(cart_router, prefix=prefix)
 app.include_router(orders_router, prefix=prefix)
 app.include_router(dashboard_router, prefix=prefix)
