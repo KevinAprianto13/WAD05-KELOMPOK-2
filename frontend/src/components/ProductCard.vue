@@ -31,16 +31,17 @@
     </div>
     
     <div class="product-body">
-      <div class="product-category">Kategori Utama</div>
+      <div class="product-category">{{ product.category?.name || 'Tanpa Kategori' }}</div>
       <h3 class="product-name">{{ product.name }}</h3>
       
       <div class="rating-row">
         <span class="stars">
-          <svg v-for="i in 5" :key="i" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="color: #f59e0b; display: inline-block;">
+          <svg v-for="i in 5" :key="i" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" :style="{ color: i <= Math.round(product.avg_rating) ? '#f59e0b' : '#d1d5db', display: 'inline-block' }">
             <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" />
           </svg>
         </span>
-        <span class="sold-count">({{ Math.floor(Math.random() * 200) + 10 }} Terjual)</span>
+        <span class="sold-count" v-if="product.review_count">{{ product.avg_rating }} ({{ product.review_count }} ulasan)</span>
+        <span class="sold-count" v-else>Belum ada ulasan</span>
       </div>
 
       <div class="product-footer">

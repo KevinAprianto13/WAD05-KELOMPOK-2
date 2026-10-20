@@ -29,6 +29,7 @@
               <div class="oi-info">
                 <div class="oi-name">{{ item.product.name }}</div>
                 <div class="oi-meta text-muted">{{ item.quantity }} × {{ formatPrice(item.unit_price) }}</div>
+                <RouterLink v-if="order.status === 'delivered'" :to="`/products/${item.product_id}#ulasan`" class="oi-review">Beri Ulasan</RouterLink>
               </div>
               <div class="oi-subtotal">{{ formatPrice(item.unit_price * item.quantity) }}</div>
             </div>
@@ -90,6 +91,7 @@ h1 { margin-bottom: 32px; }
 .oi-info { flex: 1; }
 .oi-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
 .oi-meta { font-size: 0.8rem; }
+.oi-review { display: inline-block; margin-top: 4px; color: var(--accent); font-size: 0.8rem; font-weight: 600; }
 .oi-subtotal { font-weight: 700; font-size: 0.9rem; }
 .order-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border); gap: 16px; flex-wrap: wrap; }
 .order-addr { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; flex: 1; }
