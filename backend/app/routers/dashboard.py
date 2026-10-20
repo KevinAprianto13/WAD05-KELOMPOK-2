@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_admin
 from app.db.session import get_db
-from app.models.models import Order, OrderItem, OrderStatus, Product, User
+from app.models.models import Order, OrderItem, OrderStatus, Product, User, UserRole
 from app.schemas.schemas import DashboardStats, SalesDataPoint
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -20,7 +20,7 @@ def get_dashboard_stats(_=Depends(get_current_admin), db: Session = Depends(get_
     ).scalar() or 0.0
 
     total_orders = db.query(func.count(Order.id)).scalar() or 0
-    total_customers = db.query(func.count(User.id)).scalar() or 0
+    total_customers = db.query(func.count(User.id)).filter(User.role == UserRole.customer).scalar() or 0
     total_products = db.query(func.count(Product.id)).filter(Product.is_active == True).scalar() or 0
     pending_orders = db.query(func.count(Order.id)).filter(Order.status == OrderStatus.pending).scalar() or 0
 

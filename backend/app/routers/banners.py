@@ -55,6 +55,8 @@ async def upload_banner(
             raise HTTPException(status_code=400, detail="Gunakan gambar JPG, PNG, atau WebP")
         content = await image.read()
     else:
+        if not image_url.startswith(("http://", "https://")):
+            raise HTTPException(status_code=400, detail="URL gambar harus diawali http:// atau https://")
         try:
             request = Request(image_url, headers={"User-Agent": "NusaShop/1.0"})
             with urlopen(request, timeout=10) as response:

@@ -21,7 +21,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Password</label>
-              <input id="reg-password" v-model="form.password" type="password" class="form-input" placeholder="Min. 8 karakter" required minlength="6" />
+              <input id="reg-password" v-model="form.password" type="password" class="form-input" placeholder="Min. 8 karakter" required minlength="8" />
             </div>
 
             <div v-if="error" class="error-msg">{{ error }}</div>
