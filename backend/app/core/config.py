@@ -6,12 +6,12 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # JWT
-    SECRET_KEY: str = "nusashop-super-secret-key-change-in-production-2024"
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 hari
 
     # Database
-    DATABASE_URL: str = "sqlite:///./nusashop.db"
+    DATABASE_URL: str = "postgresql+psycopg://nusashop:nusashop@localhost:5432/nusashop"
 
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]

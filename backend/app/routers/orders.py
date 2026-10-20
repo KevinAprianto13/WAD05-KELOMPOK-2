@@ -29,7 +29,7 @@ def checkout(
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     # Validate stock & calculate total
-    total = 0.0
+    total = 0
     for item in cart.items:
         if item.product.stock < item.quantity:
             raise HTTPException(

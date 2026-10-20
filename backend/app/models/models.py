@@ -1,8 +1,8 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import (Boolean, Column, DateTime, Enum, Float, ForeignKey,
-                        Integer, String, Text)
+from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
+                        Numeric, String, Text)
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -61,7 +61,7 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, index=True)
     description = Column(Text)
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(12, 2), nullable=False)
     stock = Column(Integer, default=0)
     image_url = Column(String)
     is_active = Column(Boolean, default=True)
@@ -114,7 +114,7 @@ class Order(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     status = Column(Enum(OrderStatus), default=OrderStatus.pending)
-    total_price = Column(Float, nullable=False)
+    total_price = Column(Numeric(12, 2), nullable=False)
     shipping_address = Column(Text, nullable=False)
     notes = Column(Text)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -132,7 +132,7 @@ class OrderItem(Base):
     order_id = Column(Integer, ForeignKey("orders.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity = Column(Integer, nullable=False)
-    unit_price = Column(Float, nullable=False)
+    unit_price = Column(Numeric(12, 2), nullable=False)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")

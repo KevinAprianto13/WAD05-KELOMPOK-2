@@ -2,13 +2,12 @@
 Seed script: creates admin user, categories, and products.
 Run: python -m app.db.seed
 """
-from app.db.session import SessionLocal, engine
-from app.models.models import Base, Cart, Category, Product, User, UserRole
+from app.db.session import SessionLocal
+from app.models.models import Cart, Category, Product, User, UserRole
 from app.core.security import get_password_hash
 
 
 def seed():
-    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     # Admin user
