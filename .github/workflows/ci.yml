@@ -1,4 +1,4 @@
-name: CI/CD NusaShop
+name: CI NusaShop
 
 on:
   push:
@@ -13,19 +13,44 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nusashop
+          POSTGRES_PASSWORD: nusashop
+          POSTGRES_DB: nusashop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://nusashop:nusashop@localhost:5432/nusashop
+      SECRET_KEY: kunci-khusus-untuk-ci
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements-dev.txt
+
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest httpx
-      - name: Run backend linting
-        run: python -m py_compile app/main.py && echo "Syntax OK"
-      - name: Test API health
-        run: |
-          python -c "from app.main import app; print('App imports OK')"
+        run: pip install -r requirements-dev.txt
+
+      - name: Cek migrasi Alembic
+        run: alembic upgrade head && alembic downgrade base
+
+      - name: Jalankan pytest
+        run: pytest -v
 
   frontend-build:
     name: Frontend Build
@@ -33,25 +58,19 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
+
       - name: Install dependencies
         run: npm ci
+
       - name: Build
         run: npm run build
-
-  deploy:
-    name: Deploy (on main)
-    needs: [ backend-test, frontend-build ]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy notification
-        run: echo "Deployment pipeline ready - configure your server SSH keys to enable auto-deploy"
