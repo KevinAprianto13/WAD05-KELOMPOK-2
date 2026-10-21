@@ -24,7 +24,7 @@
                 class="status-select"
                 :id="`order-status-${order.id}`"
                 :value="order.status"
-                @change="updateStatus(order.id, $event.target.value)"
+                @change="updateStatus(order.id, $event.target)"
               >
                 <option v-for="s in statuses" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
@@ -89,13 +89,16 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-async function updateStatus(id, status) {
+async function updateStatus(id, select) {
+  const idx = orders.value.findIndex(o => o.id === id)
   try {
-    const { data } = await ordersApi.updateStatus(id, status)
-    const idx = orders.value.findIndex(o => o.id === id)
+    const { data } = await ordersApi.updateStatus(id, select.value)
     if (idx !== -1) orders.value[idx] = data
     toast('Status pesanan diperbarui', 'success')
-  } catch { toast('Gagal memperbarui status', 'error') }
+  } catch (e) {
+    select.value = orders.value[idx].status
+    toast(e.response?.data?.detail || 'Gagal memperbarui status', 'error')
+  }
 }
 
 onMounted(async () => {

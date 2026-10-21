@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.deps import get_current_admin
 from app.db.session import get_db
@@ -21,7 +21,7 @@ def list_categories(db: Session = Depends(get_db)):
     return db.query(Category).all()
 
 
-@categories_router.post("", response_model=CategoryOut)
+@categories_router.post("", response_model=CategoryOut, status_code=201)
 def create_category(cat_in: CategoryCreate, db: Session = Depends(get_db), _=Depends(get_current_admin)):
     existing = db.query(Category).filter(Category.slug == cat_in.slug).first()
     if existing:
@@ -38,6 +38,8 @@ def delete_category(category_id: int, db: Session = Depends(get_db), _=Depends(g
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
+    if db.query(Product).filter(Product.category_id == category_id).first():
+        raise HTTPException(status_code=400, detail="Kategori masih dipakai oleh produk")
     db.delete(cat)
     db.commit()
     return {"message": "Category deleted"}
@@ -56,11 +58,15 @@ def list_products(
     category_id: Optional[int] = Query(None),
     min_price: Optional[float] = Query(None),
     max_price: Optional[float] = Query(None),
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    q = db.query(Product).options(joinedload(Product.category)).filter(Product.is_active == True)
+    q = (
+        db.query(Product)
+        .options(joinedload(Product.category), selectinload(Product.reviews))
+        .filter(Product.is_active == True)
+    )
     if search:
         q = q.filter(Product.name.ilike(f"%{search}%"))
     if category_id:
@@ -74,7 +80,12 @@ def list_products(
 
 @products_router.get("/{product_id}", response_model=ProductOut)
 def get_product(product_id: int, db: Session = Depends(get_db)):
-    product = db.query(Product).options(joinedload(Product.category)).filter(Product.id == product_id).first()
+    product = (
+        db.query(Product)
+        .options(joinedload(Product.category))
+        .filter(Product.id == product_id, Product.is_active == True)
+        .first()
+    )
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product

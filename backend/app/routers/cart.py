@@ -78,9 +78,11 @@ def update_cart_item(
     if not item:
         raise HTTPException(status_code=404, detail="Cart item not found")
 
-    if item_in.quantity <= 0:
+    if item_in.quantity == 0:
         db.delete(item)
     else:
+        if item.product.stock < item_in.quantity:
+            raise HTTPException(status_code=400, detail="Insufficient stock")
         item.quantity = item_in.quantity
 
     db.commit()

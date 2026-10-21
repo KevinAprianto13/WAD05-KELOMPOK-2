@@ -1,15 +1,15 @@
-from typing import Optional
+from typing import Literal, Optional
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 # ── Auth Schemas ──────────────────────────────────────────────────────────────
 
 class UserCreate(BaseModel):
     email: EmailStr
-    full_name: str
-    password: str
+    full_name: str = Field(min_length=2, max_length=100)
+    password: str = Field(min_length=8, max_length=72)
 
 
 class UserLogin(BaseModel):
@@ -38,8 +38,8 @@ class Token(BaseModel):
 # ── Category Schemas ──────────────────────────────────────────────────────────
 
 class CategoryCreate(BaseModel):
-    name: str
-    slug: str
+    name: str = Field(min_length=2, max_length=50)
+    slug: str = Field(min_length=2, max_length=50, pattern=r"^[a-z0-9-]+$")
 
 
 class CategoryOut(BaseModel):
@@ -54,19 +54,19 @@ class CategoryOut(BaseModel):
 # ── Product Schemas ───────────────────────────────────────────────────────────
 
 class ProductCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=150)
     description: Optional[str] = None
-    price: float
-    stock: int = 0
+    price: float = Field(gt=0)
+    stock: int = Field(0, ge=0)
     image_url: Optional[str] = None
     category_id: Optional[int] = None
 
 
 class ProductUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=2, max_length=150)
     description: Optional[str] = None
-    price: Optional[float] = None
-    stock: Optional[int] = None
+    price: Optional[float] = Field(None, gt=0)
+    stock: Optional[int] = Field(None, ge=0)
     image_url: Optional[str] = None
     category_id: Optional[int] = None
     is_active: Optional[bool] = None
@@ -92,6 +92,8 @@ class ProductOut(BaseModel):
     category_id: Optional[int]
     category: Optional[CategoryOut]
     images: list[ProductImageOut] = []
+    avg_rating: float = 0
+    review_count: int = 0
     created_at: datetime
 
     class Config:
@@ -102,11 +104,11 @@ class ProductOut(BaseModel):
 
 class CartItemCreate(BaseModel):
     product_id: int
-    quantity: int = 1
+    quantity: int = Field(1, gt=0, le=100)
 
 
 class CartItemUpdate(BaseModel):
-    quantity: int
+    quantity: int = Field(ge=0, le=100)
 
 
 class CartItemOut(BaseModel):
@@ -130,9 +132,9 @@ class CartOut(BaseModel):
 # ── Order Schemas ─────────────────────────────────────────────────────────────
 
 class CheckoutRequest(BaseModel):
-    shipping_address: str
-    notes: Optional[str] = None
-    payment_method: str = "transfer"
+    shipping_address: str = Field(min_length=10, max_length=500)
+    notes: Optional[str] = Field(None, max_length=500)
+    payment_method: Literal["transfer", "gopay", "ovo", "qris"] = "transfer"
 
 
 class OrderItemOut(BaseModel):
@@ -195,8 +197,8 @@ class SalesDataPoint(BaseModel):
 # ── Chat Schemas ──────────────────────────────────────────────────────────────
 
 class ChatMessageCreate(BaseModel):
-    receiver_id: int
-    content: str
+    receiver_id: int = 0
+    content: str = Field(min_length=1, max_length=1000)
 
 
 class ChatMessageOut(BaseModel):
@@ -228,6 +230,24 @@ class NotificationOut(BaseModel):
     type: str
     is_read: bool
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Review Schemas ────────────────────────────────────────────────────────────
+
+class ReviewCreate(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=500)
+
+
+class ReviewOut(BaseModel):
+    id: int
+    rating: int
+    comment: Optional[str]
+    created_at: datetime
+    user_name: str
 
     class Config:
         from_attributes = True

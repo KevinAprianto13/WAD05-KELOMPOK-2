@@ -4,7 +4,7 @@
     <div class="container" v-if="loading"><div class="loading-center"><div class="spinner"></div></div></div>
     <div class="container" v-else-if="product">
       <div class="shopee-breadcrumb">
-        <RouterLink to="/">Shopee</RouterLink> > 
+        <RouterLink to="/">NusaShop</RouterLink> > 
         <RouterLink to="/products">Produk</RouterLink> > 
         <span v-if="product.category">{{ product.category.name }} > </span>
         <span>{{ product.name }}</span>
@@ -71,6 +71,33 @@
         <div class="desc-header">Spesifikasi & Deskripsi Produk</div>
         <div class="desc-content">{{ product.description || 'Tidak ada deskripsi.' }}</div>
       </div>
+
+      <!-- Ulasan -->
+      <div class="shopee-desc-card mt-4" id="ulasan">
+        <div class="desc-header">
+          Ulasan Pembeli
+          <span class="review-summary" v-if="product.review_count">★ {{ product.avg_rating }} dari 5 ({{ product.review_count }} ulasan)</span>
+        </div>
+
+        <form v-if="auth.isLoggedIn && !auth.isAdmin" class="review-form" @submit.prevent="kirimUlasan">
+          <div class="star-input">
+            <button v-for="i in 5" :key="i" type="button" :class="{ active: i <= ulasan.rating }" :aria-label="`${i} bintang`" @click="ulasan.rating = i">★</button>
+          </div>
+          <textarea v-model="ulasan.comment" class="form-input" rows="3" maxlength="500" placeholder="Ceritakan pengalamanmu dengan produk ini..."></textarea>
+          <p v-if="errorUlasan" class="review-error">{{ errorUlasan }}</p>
+          <button type="submit" class="btn btn-primary" :disabled="!ulasan.rating || mengirim">{{ mengirim ? 'Mengirim...' : 'Kirim Ulasan' }}</button>
+        </form>
+
+        <p v-if="reviews.length === 0" class="desc-content">Belum ada ulasan untuk produk ini.</p>
+        <div v-for="r in reviews" :key="r.id" class="review-item">
+          <div class="review-head">
+            <strong>{{ r.user_name }}</strong>
+            <span class="review-stars">{{ '★'.repeat(r.rating) }}{{ '☆'.repeat(5 - r.rating) }}</span>
+          </div>
+          <p v-if="r.comment">{{ r.comment }}</p>
+          <small>{{ new Date(r.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) }}</small>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -79,7 +106,7 @@
 import { ref, onMounted, inject, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import NavBar from '@/components/NavBar.vue'
-import { productsApi } from '@/api'
+import { productsApi, reviewsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 
@@ -95,6 +122,10 @@ const qty = ref(1)
 const adding = ref(false)
 const selectedImage = ref(0)
 const touchStartX = ref(0)
+const reviews = ref([])
+const ulasan = ref({ rating: 0, comment: '' })
+const errorUlasan = ref('')
+const mengirim = ref(false)
 const gallery = computed(() => {
   const urls = [product.value?.image_url, ...(product.value?.images || []).map(image => image.image_url)]
   return [...new Set(urls.filter(Boolean))].length ? [...new Set(urls.filter(Boolean))] : ['/placeholder.jpg']
@@ -126,11 +157,34 @@ async function handleAddToCart() {
   }
 }
 
+async function muatUlasan() {
+  const { data } = await reviewsApi.list(route.params.id)
+  reviews.value = data
+}
+
+async function kirimUlasan() {
+  errorUlasan.value = ''
+  mengirim.value = true
+  try {
+    await reviewsApi.create(product.value.id, ulasan.value)
+    toast('Terima kasih, ulasan berhasil dikirim!', 'success')
+    ulasan.value = { rating: 0, comment: '' }
+    const { data } = await productsApi.get(route.params.id)
+    product.value = data
+    await muatUlasan()
+  } catch (e) {
+    errorUlasan.value = e.response?.data?.detail || 'Gagal mengirim ulasan'
+  } finally {
+    mengirim.value = false
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
     const { data } = await productsApi.get(route.params.id)
     product.value = data
+    await muatUlasan()
   } catch { router.push('/products') }
   finally { loading.value = false }
 })
@@ -175,6 +229,17 @@ onMounted(async () => {
 .shopee-desc-card { padding: 28px 32px; border: 1px solid var(--border); border-radius: 14px; background: white; box-shadow: var(--shadow-sm); }
 .desc-header { margin-bottom: 14px; color: var(--text-primary); font-size: 1.05rem; font-weight: 800; }
 .desc-content { color: var(--text-secondary); font-size: .9rem; line-height: 1.8; white-space: pre-wrap; }
+.review-summary { margin-left: 10px; color: #f59e0b; font-size: .9rem; }
+.review-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.star-input button { padding: 0 2px; color: #d1d5db; background: none; font-size: 1.8rem; }
+.star-input button.active { color: #f59e0b; }
+.review-form .btn { align-self: flex-start; }
+.review-error { color: var(--danger); font-size: .85rem; }
+.review-item { padding: 14px 0; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-size: .9rem; }
+.review-item:last-child { border-bottom: 0; }
+.review-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; color: var(--text-primary); }
+.review-stars { color: #f59e0b; }
+.review-item small { color: var(--text-muted); }
 @media (max-width: 900px) { .shopee-detail-card { grid-template-columns: 1fr; } .detail-img-col { min-height: 360px; border-right: 0; border-bottom: 1px solid var(--border); } .detail-img { height: 330px; } .detail-info-col { padding: 28px; } .shopee-price-box { margin-right: -28px; margin-left: -28px; padding-right: 28px; padding-left: 28px; } }
 @media (max-width: 560px) { .shopee-detail-page { padding-top: 92px; } .detail-img-col { min-height: 280px; padding: 18px 44px 82px; } .detail-img { height: 260px; } .gallery-controls { right: 18px; bottom: 14px; left: 18px; } .gallery-thumb { width: 44px; height: 44px; } .detail-info-col { padding: 22px 18px; } .shopee-product-title { font-size: 1.7rem; } .shopee-price-box { margin-right: -18px; margin-left: -18px; padding-right: 18px; padding-left: 18px; } .shopee-detail-row { grid-template-columns: 92px 1fr; } .shopee-actions { flex-direction: column; } .shopee-desc-card { padding: 22px 18px; } }
 </style>

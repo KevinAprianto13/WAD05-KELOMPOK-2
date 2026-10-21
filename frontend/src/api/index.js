@@ -49,6 +49,12 @@ export const productsApi = {
   delete: (id) => api.delete(`/products/${id}`),
 }
 
+// ── Reviews ───────────────────────────────────────────────────────────────────
+export const reviewsApi = {
+  list: (productId) => api.get(`/products/${productId}/reviews`),
+  create: (productId, data) => api.post(`/products/${productId}/reviews`, data),
+}
+
 // ── Categories ────────────────────────────────────────────────────────────────
 export const categoriesApi = {
   list: () => api.get('/categories'),

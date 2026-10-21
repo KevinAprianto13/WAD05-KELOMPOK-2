@@ -18,12 +18,15 @@ def send_message(
 ):
     receiver_id = data.receiver_id
     if current_user.role == "customer":
-        if not receiver_id:
-            # find an admin
-            admin = db.query(User).filter(User.role == "admin").first()
-            if not admin:
-                raise HTTPException(status_code=400, detail="No admin available to receive message.")
-            receiver_id = admin.id
+        # Customer hanya boleh chat ke admin
+        admin = db.query(User).filter(User.role == "admin").first()
+        if not admin:
+            raise HTTPException(status_code=400, detail="No admin available to receive message.")
+        receiver_id = admin.id
+    else:
+        receiver = db.query(User).filter(User.id == receiver_id).first()
+        if not receiver:
+            raise HTTPException(status_code=404, detail="Penerima tidak ditemukan")
     
     msg = ChatMessage(
         sender_id=current_user.id,

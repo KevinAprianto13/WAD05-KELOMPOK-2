@@ -11,6 +11,15 @@ from app.schemas.schemas import CheckoutRequest, OrderOut, OrderStatusUpdate
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
+# Status yang boleh dituju dari status sekarang
+NEXT_STATUS = {
+    OrderStatus.pending: [OrderStatus.processing, OrderStatus.cancelled],
+    OrderStatus.processing: [OrderStatus.shipped, OrderStatus.cancelled],
+    OrderStatus.shipped: [OrderStatus.delivered],
+    OrderStatus.delivered: [],
+    OrderStatus.cancelled: [],
+}
+
 
 @router.post("/checkout", response_model=OrderOut, status_code=201)
 def checkout(
@@ -28,9 +37,16 @@ def checkout(
     if not cart or not cart.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
+    # Kunci baris produk supaya dua checkout bersamaan tidak membuat stok minus
+    product_ids = [item.product_id for item in cart.items]
+    db.query(Product).filter(Product.id.in_(product_ids)).order_by(Product.id).with_for_update().all()
+
     # Validate stock & calculate total
-    total = 0.0
+    total = 0
     for item in cart.items:
+        db.refresh(item.product)
+        if not item.product.is_active:
+            raise HTTPException(status_code=400, detail=f"Produk {item.product.name} sudah tidak dijual")
         if item.product.stock < item.quantity:
             raise HTTPException(
                 status_code=400,
@@ -140,9 +156,22 @@ def update_order_status(
         raise HTTPException(status_code=404, detail="Order not found")
 
     try:
-        order.status = OrderStatus(status_in.status)
+        new_status = OrderStatus(status_in.status)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid status: {status_in.status}")
+
+    if new_status not in NEXT_STATUS[order.status]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Status tidak bisa diubah dari {order.status.value} ke {new_status.value}",
+        )
+
+    # Pesanan batal, stok dikembalikan
+    if new_status == OrderStatus.cancelled:
+        for item in order.items:
+            item.product.stock += item.quantity
+
+    order.status = new_status
 
     # Notify customer
     notif = Notification(
