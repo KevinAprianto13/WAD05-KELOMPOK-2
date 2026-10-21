@@ -20,9 +20,13 @@ from app.routers.banners import router as banners_router
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-# Folder upload dibuat otomatis kalau belum ada
-UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
+# Folder upload dibuat otomatis kalau belum ada (aman untuk serverless / read-only environment)
+try:
+    UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
+    UPLOAD_DIR.mkdir(exist_ok=True)
+except OSError:
+    UPLOAD_DIR = Path("/tmp/uploads")
+    UPLOAD_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -38,6 +42,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,5 +64,57 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.get("/")
+@app.get("/api")
 def root():
     return {"message": f"Welcome to {settings.PROJECT_NAME} API", "docs": "/docs"}
+
+
+@app.get(f"{prefix}/init-db")
+@app.post(f"{prefix}/init-db")
+def initialize_database(secret: str = ""):
+    """
+    Endpoint untuk inisialisasi tabel di database Neon (Alembic) dan memasukkan data seed awal.
+    Bisa diakses sekali via browser setelah deploy ke Vercel.
+    """
+    from sqlalchemy.orm import Session
+    from app.db.session import engine
+    from app.models.models import User
+
+    # Jika database sudah punya user dan secret tidak sesuai, tolak
+    if secret != settings.SECRET_KEY:
+        try:
+            with Session(engine) as db:
+                if db.query(User).first() is not None:
+                    return {
+                        "status": "error",
+                        "message": "Database sudah diinisialisasi sebelumnya. Kirimkan ?secret=<SECRET_KEY> jika ingin menjalankan ulang.",
+                    }
+        except Exception:
+            pass  # Tabel belum ada, izinkan proses lanjut
+
+    try:
+        from alembic.config import Config
+        from alembic import command
+        from app.db.seed import seed
+
+        backend_dir = Path(__file__).resolve().parents[1]
+        alembic_ini_path = backend_dir / "alembic.ini"
+        alembic_cfg = Config(str(alembic_ini_path))
+        alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+        # Jalankan migrasi alembic
+        command.upgrade(alembic_cfg, "head")
+
+        # Jalankan seeding data awal
+        seed()
+
+        return {
+            "status": "success",
+            "message": "Database Neon berhasil diinisialisasi dan data awal (Admin & Produk) telah di-seed!",
+            "admin": "admin@nusashop.com / admin123",
+            "customer": "customer@nusashop.com / customer123",
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Gagal menginisialisasi database: {str(e)}"}
+
